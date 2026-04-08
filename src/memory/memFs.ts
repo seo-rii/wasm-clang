@@ -146,7 +146,6 @@ export default class MemFS {
 		this.mem.check();
 		const message = this.mem.readStr(buf, len);
 		this.trace(`memfs_log(${previewText(message)})`);
-		console.log(message);
 	}
 
 	copy_out(clang_dst: number, memfs_src: number, size: number) {

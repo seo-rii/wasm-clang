@@ -1,6 +1,5 @@
 import type MemFS from './memFs.js';
 import { readStr, readOct } from '../encode.js';
-import { assert } from '../error.js';
 
 interface EntryInit {
 	filename: string;
@@ -89,8 +88,7 @@ export default function untar(buffer: Uint8Array | ArrayBufferLike, memfs: MemFS
 				memfs.addDirectory(entry.filename);
 				break;
 			default:
-				console.log('type', entry.type);
-				assert(false);
+				throw new Error(`unsupported tar entry type: ${entry.type}`);
 		}
 	}
 }

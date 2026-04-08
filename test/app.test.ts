@@ -35,6 +35,7 @@ describe('App debug tracing', () => {
 	it('traces normal proc_exit without treating it as an error', async () => {
 		const trace = vi.fn();
 		const stdout = vi.fn();
+		const consoleLog = vi.spyOn(console, 'log').mockImplementation(() => {});
 		const app = Object.assign(Object.create(App.prototype), {
 			ready: Promise.resolve(),
 			argv: ['test.wasm'],
@@ -51,6 +52,29 @@ describe('App debug tracing', () => {
 		expect(trace).toHaveBeenCalledWith(expect.stringContaining('start(argv='));
 		expect(trace).toHaveBeenCalledWith('proc_exit(code=0)');
 		expect(stdout).not.toHaveBeenCalled();
+		expect(consoleLog).not.toHaveBeenCalled();
+	});
+
+	it('allows rAF proc_exit without writing to the console', async () => {
+		const trace = vi.fn();
+		const stdout = vi.fn();
+		const consoleLog = vi.spyOn(console, 'log').mockImplementation(() => {});
+		const app = Object.assign(Object.create(App.prototype), {
+			ready: Promise.resolve(),
+			argv: ['test.wasm'],
+			memfs: { stdout },
+			exports: {
+				_start() {
+					throw new ProcExit(0xc0c0a);
+				}
+			},
+			trace
+		}) as App;
+
+		await expect(app.run()).resolves.toBe(true);
+		expect(trace).toHaveBeenCalledWith('allow_rAF_after_exit');
+		expect(stdout).not.toHaveBeenCalled();
+		expect(consoleLog).not.toHaveBeenCalled();
 	});
 
 	it('traces not implemented WASI calls and writes the runtime error', async () => {
@@ -83,13 +107,13 @@ describe('App debug tracing', () => {
 		memory.write32(8, 0xdeadbeef);
 		const app = Object.assign(Object.create(App.prototype), {
 			mem: memory,
-			environ: { USER: 'jungol' },
+			environ: {},
 			trace: vi.fn()
 		}) as App;
 
 		expect(app.environ_sizes_get(0, 4)).toBe(0);
-		expect(memory.read32(0)).toBe(1);
-		expect(memory.read32(4)).toBe('USER=jungol'.length + 1);
+		expect(memory.read32(0)).toBe(0);
+		expect(memory.read32(4)).toBe(0);
 		expect(memory.read32(8)).toBe(0xdeadbeef);
 	});
 
@@ -98,15 +122,14 @@ describe('App debug tracing', () => {
 		memory.write32(4, 0xdeadbeef);
 		const app = Object.assign(Object.create(App.prototype), {
 			mem: memory,
-			environ: { USER: 'jungol' },
+			environ: {},
 			trace: vi.fn()
 		}) as App;
 
 		expect(app.environ_get(0, 16)).toBe(0);
-		expect(memory.read32(0)).toBe(16);
+		expect(memory.read32(0)).toBe(0);
 		expect(memory.read32(4)).toBe(0xdeadbeef);
-		expect(memory.readStr(16, 'USER=jungol'.length)).toBe('USER=jungol');
-		expect(memory.read8(16 + 'USER=jungol'.length)).toBe(0);
+		expect(memory.read8(16)).toBe(0);
 	});
 
 	it('writes preview1 argv sizes as 32-bit values without clobbering adjacent memory', () => {

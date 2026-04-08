@@ -75,7 +75,7 @@ export default class App {
 
 	constructor(module: WebAssembly.Module, memfs: MemFS, name: string, ...args: string[]) {
 		this.argv = [name, ...args];
-		this.environ = { USER: 'jungol' };
+		this.environ = { USER: 'wasm-clang' };
 		this.memfs = memfs;
 
 		const env = bindNew(
@@ -132,11 +132,11 @@ export default class App {
 			if (exn instanceof ProcExit) {
 				this.trace(`proc_exit(code=${exn.code})`);
 				if (exn.code === RAF_PROC_EXIT_CODE) {
-					console.log('Allowing rAF after exit.');
+					this.trace('allow_rAF_after_exit');
 					return true;
 				}
 				// Don't allow rAF unless you return the right code.
-				console.log(`Disallowing rAF since exit code is ${exn.code}.`);
+				this.trace(`disallow_rAF_after_exit(code=${exn.code})`);
 				if (exn.code == 0) return false;
 				writeStack = false;
 			}
