@@ -12,6 +12,7 @@ function createClangHarness() {
 		log: false,
 		debug: false,
 		lastBuildKey: '',
+		lastArtifactPath: 'main.wasm',
 		traceStartedAt: 0,
 		path: '',
 		memfs: {
@@ -565,18 +566,48 @@ int main() {
 		expect(compileWasm).toHaveBeenCalledTimes(2);
 	});
 
+	it('derives compile and artifact names from the requested file name', async () => {
+		const compileSpy = vi.spyOn(Clang.prototype, 'compile');
+		const compileWasm = vi
+			.spyOn(WebAssembly, 'compile')
+			.mockResolvedValue({ id: 'hello-module' } as unknown as WebAssembly.Module);
+		const { clang } = createClangHarness();
+
+		await clang.compileLink('int main() {}', {
+			fileName: 'hello.cpp',
+			compileArgs: ['-DTEST=1']
+		});
+
+		expect(compileSpy).toHaveBeenCalledWith({
+			input: 'hello.cpp',
+			code: 'int main() {}',
+			obj: 'hello.o',
+			language: 'CPP',
+			compileArgs: ['-DTEST=1'],
+			cppVersion: undefined,
+			cVersion: undefined,
+			debug: false
+		});
+		expect(vi.mocked(clang.link)).toHaveBeenCalledWith('hello.o', 'hello.wasm', false);
+		expect(clang.lastArtifactPath).toBe('hello.wasm');
+		expect(compileWasm).toHaveBeenCalledTimes(1);
+	});
+
 	it('passes runtime program args to the compiled wasm module', async () => {
 		const { clang } = createClangHarness();
 		const wasmModule = { id: 'wasm-module' } as unknown as WebAssembly.Module;
+		clang.lastArtifactPath = 'hello.wasm';
 		clang.compileLink = vi.fn(async () => wasmModule) as any;
 
 		await clang.compileLinkRun('int main() {}', {
+			fileName: 'hello.cpp',
 			compileArgs: ['-DTEST=1'],
 			programArgs: ['one', 'two']
 		});
 
 		expect(vi.mocked(clang.compileLink)).toHaveBeenCalledWith('int main() {}', {
 			language: 'CPP',
+			fileName: 'hello.cpp',
 			compileArgs: ['-DTEST=1'],
 			debug: false,
 			breakpoints: [],
@@ -588,6 +619,6 @@ int main() {
 		});
 		const runArgs = vi.mocked(clang.run).mock.calls[0];
 		expect(runArgs?.[0]).toBe(wasmModule);
-		expect(runArgs?.slice(2)).toEqual(['test.wasm', 'one', 'two']);
+		expect(runArgs?.slice(2)).toEqual(['hello.wasm', 'one', 'two']);
 	});
 });

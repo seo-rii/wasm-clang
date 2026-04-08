@@ -107,9 +107,10 @@ export interface BrowserClangCompileRequest {
 
 export interface BrowserClangArtifact {
 	bytes: Uint8Array | ArrayBuffer;
-	wasm?: Uint8Array | ArrayBuffer;
+	wasm?: WebAssembly.Module;
 	target: SupportedClangTarget;
 	format: BrowserClangArtifactFormat;
+	fileName?: string;
 	language?: SupportedClangLanguage;
 	debugMetadata?: BrowserClangDebugMetadata;
 }
@@ -126,6 +127,7 @@ export interface BrowserClangCompilerResult {
 
 export interface BrowserExecutionOptions {
 	args?: string[];
+	programName?: string;
 	env?: Record<string, string>;
 	stdin?: () => string | Uint8Array | ArrayBuffer | null;
 	stdout?: (chunk: string) => void;
@@ -161,6 +163,7 @@ export interface BrowserClangRuntimeOptions {
 
 export interface BrowserClangRuntimeRunOptions {
 	language?: SupportedClangLanguage;
+	fileName?: string;
 	args?: string[];
 	compileArgs?: string[];
 	programArgs?: string[];

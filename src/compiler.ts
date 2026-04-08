@@ -10,6 +10,7 @@ import type {
 	BrowserClangCompiler,
 	BrowserClangCompilerResult,
 	BrowserClangRuntimeOptions,
+	CompilerDiagnostic,
 	CompilerLogLevel,
 	CompilerLogRecord,
 	RuntimeManifestV1
@@ -66,6 +67,38 @@ function emitProgress(
 		percent,
 		message
 	});
+}
+
+function extractCompilerDiagnostics(output: string): CompilerDiagnostic[] {
+	const diagnostics: CompilerDiagnostic[] = [];
+	for (const line of output.split(/\r?\n/)) {
+		const match = line.match(
+			/^(.*?):(\d+):(?:(\d+):)?\s*(fatal error|error|warning|note):\s*(.+)$/
+		);
+		if (!match) continue;
+		diagnostics.push({
+			fileName: match[1] || undefined,
+			lineNumber: Number(match[2]),
+			columnNumber: match[3] ? Number(match[3]) : undefined,
+			severity:
+				match[4] === 'warning'
+					? 'warning'
+					: match[4] === 'note'
+						? 'other'
+						: 'error',
+			message: match[5]
+		});
+	}
+	return diagnostics;
+}
+
+function createLogResult(records: CompilerLogRecord[], enabled: boolean) {
+	return enabled
+		? {
+				logRecords: records,
+				logs: records.map((record) => record.message)
+			}
+		: {};
 }
 
 async function resolveManifest(options: CreateClangCompilerOptions | PreloadBrowserClangRuntimeOptions) {
@@ -147,30 +180,45 @@ export async function compileClang(
 	try {
 		await runtime.ready;
 		pushRecord(logRecords, enabledLogs, '[wasm-clang] runtime ready');
-		await runtime.compileLink(request.code, {
+		const wasmModule = await runtime.compileLink(request.code, {
 			language: request.language || 'CPP',
+			fileName: request.fileName,
 			compileArgs: request.compileArgs || [],
+			debug: request.debug,
+			breakpoints: request.breakpoints,
+			pauseOnEntry: request.pauseOnEntry,
 			cppVersion: request.cppVersion,
 			cVersion: request.cVersion
 		});
-		const artifactBytes = toStandaloneBytes(runtime.memfs.getFileContents('test.wasm'));
+		const output = compilerOutput.join('');
+		const diagnostics = extractCompilerDiagnostics(output);
+		const artifactBytes = toStandaloneBytes(
+			runtime.memfs.getFileContents(runtime.lastArtifactPath)
+		);
 		const artifact: BrowserClangArtifact = {
 			bytes: artifactBytes,
-			wasm: artifactBytes,
+			wasm: wasmModule,
 			target: 'wasm32-wasi',
-			format: 'wasi-core-wasm'
+			format: 'wasi-core-wasm',
+			fileName: runtime.lastArtifactPath,
+			language: request.language || 'CPP',
+			...(request.debug
+				? {
+						debugMetadata: {
+							variableMetadata: runtime.debugVariableMetadata,
+							globalVariableMetadata: runtime.debugGlobalMetadata,
+							functionMetadata: runtime.debugFunctionMetadata
+						}
+					}
+				: {})
 		};
 		emitProgress(request, 'done', 100, 'done');
 		return {
 			success: true,
 			artifact,
-			stdout: compilerOutput.join(''),
-			...(enabledLogs
-				? {
-					logRecords,
-					logs: logRecords.map((record) => record.message)
-				}
-				: {})
+			stdout: output,
+			...(diagnostics.length ? { diagnostics } : {}),
+			...createLogResult(logRecords, enabledLogs)
 		};
 	} catch (error) {
 		pushRecord(
@@ -179,16 +227,14 @@ export async function compileClang(
 			error instanceof Error ? error.message : String(error),
 			'error'
 		);
+		const output = compilerOutput.join('');
+		const diagnostics = extractCompilerDiagnostics(output);
 		return {
 			success: false,
-			stdout: compilerOutput.join(''),
-			stderr: error instanceof Error ? error.message : String(error),
-			...(enabledLogs
-				? {
-					logRecords,
-					logs: logRecords.map((record) => record.message)
-				}
-				: {})
+			stdout: output,
+			stderr: output || (error instanceof Error ? error.message : String(error)),
+			...(diagnostics.length ? { diagnostics } : {}),
+			...createLogResult(logRecords, enabledLogs)
 		};
 	}
 }

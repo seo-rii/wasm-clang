@@ -18,6 +18,7 @@ export interface BrowserExecutionResult {
 
 export interface BrowserExecutionOptions {
 	args?: string[];
+	programName?: string;
 	env?: Record<string, string>;
 	stdin?: () => string | Uint8Array | ArrayBuffer | null;
 	stdout?: (chunk: string) => void;
@@ -186,7 +187,7 @@ export function createBrowserWasiHost(options: BrowserExecutionOptions = {}): Br
 		env.set(key, value);
 	}
 	return {
-		args: ['main.wasm', ...(options.args || [])],
+		args: [options.programName || 'main.wasm', ...(options.args || [])],
 		envEntries: Array.from(env.entries()).map(([key, value]) => `${key}=${value}`),
 		rootDirectory,
 		stdout,
@@ -208,11 +209,14 @@ export async function executeBrowserClangArtifact(
 	if (artifact.target !== 'wasm32-wasi' || artifact.format !== 'wasi-core-wasm') {
 		throw new Error('wasm-clang currently executes only wasm32-wasi preview1 core wasm artifacts.');
 	}
-	const host = createBrowserWasiHost(options);
+	const host = createBrowserWasiHost({
+		...options,
+		programName: options.programName || artifact.fileName
+	});
 	const wasiInstance = new WASI(host.args, host.envEntries, host.fds, { debug: false });
 	const bytes =
 		artifact.bytes instanceof Uint8Array ? new Uint8Array(artifact.bytes) : new Uint8Array(artifact.bytes);
-	const module = await WebAssembly.compile(bytes);
+	const module = artifact.wasm || (await WebAssembly.compile(bytes));
 	const instance = await WebAssembly.instantiate(module, {
 		wasi_unstable: wasiInstance.wasiImport,
 		wasi_snapshot_preview1: wasiInstance.wasiImport

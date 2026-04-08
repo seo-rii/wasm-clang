@@ -148,6 +148,29 @@ function resolveClangLanguageArgs(
 	};
 }
 
+export function resolveBuildArtifactNames(
+	language: ClangSourceLanguage,
+	fileName?: string
+) {
+	const normalizedFileName =
+		fileName
+			?.replace(/\\/g, '/')
+			.split('/')
+			.filter(Boolean)
+			.pop() || '';
+	const defaultStem = 'main';
+	const input =
+		normalizedFileName && /\.[A-Za-z0-9_-]+$/.test(normalizedFileName)
+			? normalizedFileName
+			: `${normalizedFileName || defaultStem}.${language === 'C' ? 'c' : 'cc'}`;
+	const stem = input.replace(/\.[^.]+$/, '') || defaultStem;
+	return {
+		input,
+		obj: `${stem}.o`,
+		wasm: `${stem}.wasm`
+	};
+}
+
 const toUtf8 = (text: string) => {
 	const surrogate = encodeURIComponent(text);
 	let result = '';
@@ -193,6 +216,7 @@ class Clang {
 	path: string;
 	assetUrls: RuntimeAssetUrls;
 	wasm?: WebAssembly.Module;
+	lastArtifactPath = 'main.wasm';
 	traceStartedAt = 0;
 	progress: CombinedProgressSlots;
 
@@ -1208,6 +1232,7 @@ class Clang {
 	async compileLink(code: string, options: BrowserClangRuntimeRunOptions = {}) {
 		const {
 			language = 'CPP',
+			fileName,
 			args = [],
 			compileArgs = args,
 			debug = false,
@@ -1220,9 +1245,7 @@ class Clang {
 			watchBuffer,
 			watchResultBuffer
 		} = options;
-		const input = language === 'C' ? `test.c` : `test.cc`,
-			obj = `test.o`,
-			wasm = `test.wasm`;
+		const { input, obj, wasm } = resolveBuildArtifactNames(language, fileName);
 		this.beginTrace(debug);
 		this.debugBreakpoints = new Set(debug ? breakpoints : []);
 		this.debugPauseOnEntry = debug && pauseOnEntry;
@@ -1230,8 +1253,11 @@ class Clang {
 		this.debugInterruptBuffer = interruptBuffer;
 		this.debugWatchBuffer = watchBuffer;
 		this.debugWatchResultBuffer = watchResultBuffer;
+		this.lastArtifactPath = wasm;
 		const buildKey = JSON.stringify({
 			code,
+			input,
+			wasm,
 			language,
 			compileArgs,
 			cppVersion,
@@ -1265,6 +1291,7 @@ class Clang {
 	async compileLinkRun(code: string, options: BrowserClangRuntimeRunOptions = {}) {
 		const {
 			language = 'CPP',
+			fileName,
 			args = [],
 			compileArgs = args,
 			programArgs = [],
@@ -1279,9 +1306,11 @@ class Clang {
 			watchResultBuffer
 		} = options;
 		this.debug = debug;
+		const { wasm } = resolveBuildArtifactNames(language, fileName);
 		return await this.run(
 			await this.compileLink(code, {
 				language,
+				fileName,
 				compileArgs,
 				debug,
 				breakpoints,
@@ -1294,7 +1323,7 @@ class Clang {
 				watchResultBuffer
 			}),
 			true,
-			`test.wasm`,
+			wasm,
 			...programArgs
 		);
 	}
