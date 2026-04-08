@@ -1,4 +1,4 @@
-import { cp, mkdir } from 'node:fs/promises';
+import { access, cp, mkdir } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -11,6 +11,17 @@ const runtimeClangdDir = path.join(runtimeSourceDir, 'clangd');
 
 const runtimeAssets = ['clang.zip', 'lld.zip', 'memfs.zip', 'sysroot.tar.zip'];
 const clangdAssets = ['clangd.js', 'clangd.wasm.gz'];
+
+try {
+	await access(path.join(wasmIdleStaticDir, 'clang', 'bin'));
+	await access(path.join(wasmIdleStaticDir, 'clangd'));
+} catch {
+	throw new Error(
+		`Expected a sibling wasm-idle checkout with static assets at ${wasmIdleStaticDir}. ` +
+			'Use the committed artifacts/runtime-source bundle for normal builds, or create ' +
+			'the sibling checkout before running npm run bootstrap:assets.'
+	);
+}
 
 await mkdir(runtimeSourceDir, { recursive: true });
 await mkdir(runtimeClangdDir, { recursive: true });

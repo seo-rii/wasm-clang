@@ -16,7 +16,8 @@
   ],
   "scripts": {
     "bootstrap:assets": "node ./scripts/bootstrap-from-wasm-idle.mjs",
-    "build": "npm run bootstrap:assets && rm -rf dist && tsc -p tsconfig.build.json && node ./scripts/prepare-runtime.mjs",
+    "build": "rm -rf dist && tsc -p tsconfig.build.json && node ./scripts/prepare-runtime.mjs",
+    "build:from-wasm-idle": "npm run bootstrap:assets && npm run build",
     "check": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
     "prepare:runtime": "node ./scripts/prepare-runtime.mjs",
