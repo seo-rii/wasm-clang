@@ -19,6 +19,12 @@ import {
 	resolveRuntimeManifestUrl
 } from './runtime-manifest.js';
 import { resolveRuntimeAssetUrls } from './runtime-assets.js';
+import {
+	BrowserClangDebugController,
+	BrowserClangDebugDriver,
+	createBrowserClangDebugController,
+	createBrowserClangDebugDriver
+} from './debug/index.js';
 
 export type {
 	BrowserClangArtifact,
@@ -57,10 +63,20 @@ export type {
 	PreloadBrowserClangRuntimeOptions,
 } from './compiler.js';
 export type { RuntimeAssetUrls } from './runtime-assets.js';
+export type {
+	BrowserClangDebugRunRequest,
+	BrowserClangDebugRuntimeOptions,
+	CreateBrowserClangDebugControllerOptions,
+	CreateBrowserClangDebugDriverOptions
+} from './debug/index.js';
 
 export {
+	BrowserClangDebugController,
+	BrowserClangDebugDriver,
 	Runtime as BrowserClangRuntime,
 	compileClang,
+	createBrowserClangDebugController,
+	createBrowserClangDebugDriver,
 	createBrowserWasiHost,
 	createClangCompiler,
 	executeBrowserClangArtifact,

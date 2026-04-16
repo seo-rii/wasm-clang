@@ -16,6 +16,7 @@ Current scope:
 - runtime manifest and build metadata under `dist/runtime/`
 - high-level `createClangCompiler()`, `preloadBrowserClangRuntime()`,
   `executeBrowserClangArtifact()`, and `resolveRuntimeAssetUrls()` helpers
+- a debug control wrapper in the root package plus a `wasm-clang/clangd` session subpath
 - unit tests ported from the current `wasm-idle` clang host
 
 ## Build
@@ -53,6 +54,21 @@ By default, the runtime resolves assets relative to the built module:
 
 If you host the assets somewhere else, pass `runtimeBaseUrl` to
 `preloadBrowserClangRuntime()` and `createClangCompiler()`.
+
+## Additional wrappers
+
+For editor/LSP integration, import the clangd session wrapper from the package subpath:
+
+```ts
+import { ClangdSession } from 'wasm-clang/clangd';
+```
+
+For debug control, the root package also exposes a thin wrapper that owns the shared debug buffers
+and command bridge:
+
+```ts
+import { createBrowserClangDebugDriver } from './dist/index.js';
+```
 
 ## Consumer contract
 
