@@ -17,4 +17,35 @@ if (!execution.stdout.includes('probe-ok')) {
 	throw new Error(`wasm-clang smoke execution failed: ${execution.stdout}`);
 }
 
+const pbdsResult = await compiler.compile({
+	language: 'CPP',
+	code: `#include <bits/stdc++.h>
+#include <ext/pb_ds/assoc_container.hpp>
+#include <ext/pb_ds/tree_policy.hpp>
+using namespace std;
+using namespace __gnu_pbds;
+
+using ordered_set = tree<int, null_type, less<int>, rb_tree_tag, tree_order_statistics_node_update>;
+
+int main() {
+	ordered_set values;
+	values.insert(10);
+	values.insert(3);
+	values.insert(7);
+	gp_hash_table<int, int> table;
+	table[4] = 9;
+	cout << *values.find_by_order(1) << " " << values.order_of_key(8) << " " << table[4] << "\\n";
+}
+`
+});
+
+if (!pbdsResult.success || !pbdsResult.artifact) {
+	throw new Error(pbdsResult.stderr || 'wasm-clang PBDS smoke compile failed');
+}
+
+const pbdsExecution = await executeBrowserClangArtifact(pbdsResult.artifact);
+if (pbdsExecution.stdout.trim() !== '7 2 9') {
+	throw new Error(`wasm-clang PBDS smoke execution failed: ${pbdsExecution.stdout}`);
+}
+
 console.log('wasm-clang smoke runtime verified');

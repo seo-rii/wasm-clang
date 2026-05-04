@@ -10,6 +10,7 @@ import type {
 	DebugVariableMetadata
 } from './types.js';
 import App from './app.js';
+import { installGccCompatibilityHeaders } from './gcc-compat.js';
 import { MemFS, untar } from './memory/index.js';
 import { green, yellow, normal } from './color.js';
 import { createCombinedProgress, type CombinedProgressSlots } from './progress.js';
@@ -245,12 +246,13 @@ class Clang {
 
 		this.getModule(this.assetUrls.clang, this.progress.clang);
 		this.getModule(this.assetUrls.lld, this.progress.lld);
-		this.ready = this.memfs.ready.then(() =>
-			this.hostLogAsync(
+		this.ready = this.memfs.ready.then(async () => {
+			await this.hostLogAsync(
 				`Untarring ${this.assetUrls.sysroot}`,
 				readBuffer(this.assetUrls.sysroot).then((buffer) => untar(buffer, this.memfs))
-			)
-		);
+			);
+			installGccCompatibilityHeaders(this.memfs);
+		});
 	}
 
 	hostLog(message: string) {

@@ -6,6 +6,7 @@ import {
 } from 'vscode-jsonrpc/lib/browser/main.js';
 
 import { resolveRuntimeAssetUrls } from '../runtime-assets.js';
+import { writeGccCompatibilityHeaders } from '../gcc-compat.js';
 import {
 	loadRuntimeManifest,
 	resolveRuntimeManifestUrl
@@ -148,6 +149,7 @@ self.addEventListener('message', async (event: MessageEvent<ClangdWorkerInboundM
 		});
 
 		clangdRuntime.FS.mkdirTree(CLANGD_WORKSPACE_PATH);
+		writeGccCompatibilityHeaders(clangdRuntime.FS, '/usr');
 		syncWorkspaceFile(CLANGD_CPP_FILE_PATH);
 		clangdRuntime.FS.writeFile(
 			`${CLANGD_WORKSPACE_PATH}/.clangd`,
