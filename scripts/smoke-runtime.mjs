@@ -20,9 +20,12 @@ if (!execution.stdout.includes('probe-ok')) {
 const pbdsResult = await compiler.compile({
 	language: 'CPP',
 	code: `#include <bits/stdc++.h>
+#include <bits/extc++.h>
+#include <ext/rope>
 #include <ext/pb_ds/assoc_container.hpp>
 #include <ext/pb_ds/tree_policy.hpp>
 using namespace std;
+using namespace __gnu_cxx;
 using namespace __gnu_pbds;
 
 using ordered_set = tree<int, null_type, less<int>, rb_tree_tag, tree_order_statistics_node_update>;
@@ -34,7 +37,15 @@ int main() {
 	values.insert(7);
 	gp_hash_table<int, int> table;
 	table[4] = 9;
-	cout << *values.find_by_order(1) << " " << values.order_of_key(8) << " " << table[4] << "\\n";
+	crope text("abc");
+	text.insert(1, "XY");
+	text.erase(3, 1);
+	__gnu_pbds::priority_queue<int> heap;
+	heap.push(2);
+	heap.push(5);
+	hash_standard_resize_policy<> resize_policy;
+	(void)resize_policy;
+	cout << *values.find_by_order(1) << " " << values.order_of_key(8) << " " << table[4] << " " << text << " " << heap.top() << "\\n";
 }
 `
 });
@@ -44,7 +55,7 @@ if (!pbdsResult.success || !pbdsResult.artifact) {
 }
 
 const pbdsExecution = await executeBrowserClangArtifact(pbdsResult.artifact);
-if (pbdsExecution.stdout.trim() !== '7 2 9') {
+if (pbdsExecution.stdout.trim() !== '7 2 9 aXYc 5') {
 	throw new Error(`wasm-clang PBDS smoke execution failed: ${pbdsExecution.stdout}`);
 }
 
